@@ -3894,3 +3894,46 @@ USER ehzawad
 
 # Set the entry point to the startup script
 ENTRYPOINT ["/usr/src/app/startup.sh"]
+
+```
+# Build stage
+ARG version=alpine
+FROM python:${version} as build
+WORKDIR /build
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt ipython
+
+# Final stage
+FROM python:${version}
+WORKDIR /usr/src/app
+
+# Install bash (as Alpine does not include it by default)
+RUN apk add --no-cache bash
+
+# Create a user with the specified name
+RUN adduser -D ehzawad
+
+# Change ownership of the working directory
+RUN chown ehzawad:ehzawad /usr/src/app
+
+# Copy installed packages including iPython from the build stage
+COPY --from=build --chown=ehzawad /usr/local /usr/local
+
+# Copy the startup script
+COPY --chown=ehzawad startup.sh /usr/src/app/startup.sh
+
+# Set permissions for the startup script
+RUN chmod +x /usr/src/app/startup.sh
+
+# Declare a volume for persistent data
+VOLUME /home/ehzawad/python-dockerbaby/src
+
+# Expose port 80
+EXPOSE 80
+
+# Change to the specified user
+USER ehzawad
+
+# Set the entry point to the startup script
+ENTRYPOINT ["/usr/src/app/startup.sh"]
+
