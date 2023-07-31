@@ -3845,3 +3845,52 @@ Logos credits can be found [here](credits.md)
 ## License
 
 [![License: CC BY-NC-ND 3.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%203.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/3.0/)
+
+
+### two files (startup.sh and Dockerfile)
+#!/bin/bash
+
+if [ "$1" == "ipython" ]; then
+  ipython
+elif [ "$1" == "python" ]; then
+  python
+else
+  /bin/bash
+fi
+# Build stage
+ARG version=alpine
+FROM python:${version} as build
+WORKDIR /build
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt ipython
+
+# Final stage
+FROM python:${version}
+WORKDIR /usr/src/app
+
+# Install bash (as Alpine does not include it by default)
+RUN apk add --no-cache bash
+
+# Create a user with the specified name
+RUN adduser -D ehzawad
+
+# Copy installed packages including iPython from the build stage
+COPY --from=build --chown=ehzawad /usr/local /usr/local
+
+# Copy the startup script
+COPY --chown=ehzawad startup.sh /usr/src/app/startup.sh
+
+# Set permissions for the startup script
+RUN chmod +x /usr/src/app/startup.sh
+
+# Declare a volume for persistent data
+VOLUME /home/ehzawad/python-dockerbaby/src
+
+# Expose port 80
+EXPOSE 80
+
+# Change to the specified user
+USER ehzawad
+
+# Set the entry point to the startup script
+ENTRYPOINT ["/usr/src/app/startup.sh"]
